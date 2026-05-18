@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funding Rate Arb Scanner — Binance vs Bybit</title>
+<meta name="description" content="Real-time funding rate arbitrage scanner across Binance and Bybit perpetual futures. Spot delta-neutral opportunities with annualized APR estimates.">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: { 950: '#06070d', 900: '#0b0d17', 800: '#11141f', 700: '#1a1e2c', 600: '#272c3d' },
+          accent: { 400: '#7dd3fc', 500: '#38bdf8', 600: '#0ea5e9' },
+          good: '#22c55e',
+          bad: '#ef4444',
+          warn: '#f59e0b',
+        },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+          mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular'],
+        }
+      }
+    }
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  body {
+    background:
+      radial-gradient(800px 500px at 10% -10%, rgba(56,189,248,0.12), transparent 70%),
+      radial-gradient(800px 500px at 110% 0%, rgba(139,92,246,0.10), transparent 70%),
+      #06070d;
+  }
+  .glass {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(8px);
+  }
+  .row-pos { color: #22c55e; }
+  .row-neg { color: #ef4444; }
+  .pulse-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 999px;
+    background: #22c55e; box-shadow: 0 0 0 0 rgba(34,197,94,0.6);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+    70% { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
+    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  }
+  table tbody tr:hover { background: rgba(56,189,248,0.04); }
+  .scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+  .scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+</style>
+</head>
+<body class="text-slate-100 font-sans min-h-screen">
+
+<header class="border-b border-white/5">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-purple-500 flex items-center justify-center shadow-lg shadow-accent-500/30">
+        <span class="text-xl">📈</span>
+      </div>
+      <div>
+        <h1 class="text-base sm:text-lg font-bold tracking-tight">Funding Rate Arb Scanner</h1>
+        <p class="text-[11px] sm:text-xs text-slate-400">Binance ⇄ Bybit · Perpetual Futures</p>
+      </div>
+    </div>
+    <a href="https://github.com/moonzyr17/funding-rate-arb-scanner" target="_blank" rel="noopener"
+       class="text-xs sm:text-sm px-3 py-1.5 rounded-lg border border-white/10 hover:border-accent-500/50 hover:text-accent-400 transition flex items-center gap-2">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55v-2.04c-3.2.7-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.27-5.24-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18.91-.25 1.89-.38 2.86-.38.97 0 1.95.13 2.86.38 2.18-1.49 3.14-1.18 3.14-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.69 5.36-5.25 5.65.41.36.78 1.06.78 2.13v3.16c0 .31.21.67.8.55C20.21 21.39 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+      <span class="hidden sm:inline">View on GitHub</span>
+      <span class="sm:hidden">GitHub</span>
+    </a>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+
+  <!-- Hero -->
+  <section class="mb-6 sm:mb-8">
+    <h2 class="text-2xl sm:text-4xl font-bold tracking-tight">
+      Spot funding-rate <span class="bg-gradient-to-r from-accent-400 to-purple-400 bg-clip-text text-transparent">arbitrage</span> opportunities
+    </h2>
+    <p class="text-slate-400 mt-2 text-sm sm:text-base max-w-2xl">
+      Live perpetual futures funding rates across Binance and Bybit, normalized to 8h and ranked by spread. Use the spread direction to plan delta-neutral positions.
+    </p>
+  </section>
+
+  <!-- Controls -->
+  <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+    <div class="glass rounded-xl p-3 sm:p-4">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400">Status</p>
+      <p class="mt-1 flex items-center gap-2 text-sm font-semibold">
+        <span class="pulse-dot"></span><span id="status-text">Loading…</span>
+      </p>
+    </div>
+    <div class="glass rounded-xl p-3 sm:p-4">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400">Pairs scanned</p>
+      <p class="mt-1 text-sm font-semibold font-mono" id="stat-pairs">—</p>
+    </div>
+    <div class="glass rounded-xl p-3 sm:p-4">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400">Top spread (8h)</p>
+      <p class="mt-1 text-sm font-semibold font-mono" id="stat-top">—</p>
+    </div>
+    <div class="glass rounded-xl p-3 sm:p-4">
+      <p class="text-[11px] uppercase tracking-wider text-slate-400">Last update</p>
+      <p class="mt-1 text-sm font-semibold font-mono" id="stat-time">—</p>
+    </div>
+  </section>
+
+  <!-- Filter bar -->
+  <section class="glass rounded-xl p-3 sm:p-4 mb-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+    <div class="flex-1 flex items-center gap-2 bg-ink-900 rounded-lg px-3 py-2 border border-white/5">
+      <svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="search" type="text" placeholder="Search symbol (e.g. BTC, ETH, SOL)" class="bg-transparent outline-none w-full text-sm placeholder:text-slate-500">
+    </div>
+    <div class="flex gap-2 items-center">
+      <label class="text-xs text-slate-400">Min spread (8h, %)</label>
+      <input id="min-spread" type="number" step="0.001" value="0.01" class="w-24 bg-ink-900 rounded-lg px-3 py-2 border border-white/5 text-sm font-mono outline-none focus:border-accent-500/40">
+      <button id="refresh-btn" class="px-3 py-2 rounded-lg bg-accent-500 hover:bg-accent-400 text-ink-950 font-semibold text-sm transition">
+        Refresh
+      </button>
+    </div>
+  </section>
+
+  <!-- Table -->
+  <section class="glass rounded-2xl overflow-hidden">
+    <div class="overflow-x-auto scrollbar">
+      <table class="w-full text-sm">
+        <thead class="bg-white/5 text-slate-300">
+          <tr class="text-left">
+            <th class="px-3 py-3 font-semibold">#</th>
+            <th class="px-3 py-3 font-semibold">Symbol</th>
+            <th class="px-3 py-3 font-semibold text-right">Binance (8h)</th>
+            <th class="px-3 py-3 font-semibold text-right">Bybit (8h)</th>
+            <th class="px-3 py-3 font-semibold text-right">Spread (8h)</th>
+            <th class="px-3 py-3 font-semibold text-right">Est. APR</th>
+            <th class="px-3 py-3 font-semibold">Strategy</th>
+          </tr>
+        </thead>
+        <tbody id="tbody" class="divide-y divide-white/5">
+          <tr><td colspan="7" class="px-3 py-12 text-center text-slate-500">Fetching live rates…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="footer-info" class="px-4 py-3 text-xs text-slate-500 border-t border-white/5 flex flex-wrap gap-x-4 gap-y-1 justify-between">
+      <span id="row-count">—</span>
+      <span class="font-mono" id="cache-info">—</span>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="mt-8 grid sm:grid-cols-3 gap-4">
+    <div class="glass rounded-xl p-4">
+      <p class="text-accent-400 font-semibold mb-1 text-sm">1. Fetch</p>
+      <p class="text-xs text-slate-400 leading-relaxed">Pulls perp funding rates from Binance <code class="text-slate-300">premiumIndex</code> and Bybit <code class="text-slate-300">tickers/linear</code>.</p>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <p class="text-accent-400 font-semibold mb-1 text-sm">2. Normalize</p>
+      <p class="text-xs text-slate-400 leading-relaxed">Bybit funding can be 4h/8h. Rates are scaled to an 8h-equivalent so spreads are apples-to-apples.</p>
+    </div>
+    <div class="glass rounded-xl p-4">
+      <p class="text-accent-400 font-semibold mb-1 text-sm">3. Strategy</p>
+      <p class="text-xs text-slate-400 leading-relaxed">Long the side that pays you (or charges less), short the side that charges more. APR is funding-only and excludes fees, slippage, and price drift.</p>
+    </div>
+  </section>
+
+  <p class="mt-8 text-[11px] text-slate-500 leading-relaxed text-center max-w-3xl mx-auto">
+    Educational tool. Funding rate arbitrage is exposed to execution slippage, exchange fees, borrow costs, and basis risk.
+    Not financial advice.
+  </p>
+</main>
+
+<script>
+  const els = {
+    status: document.getElementById('status-text'),
+    pairs: document.getElementById('stat-pairs'),
+    top: document.getElementById('stat-top'),
+    time: document.getElementById('stat-time'),
+    tbody: document.getElementById('tbody'),
+    rowCount: document.getElementById('row-count'),
+    cacheInfo: document.getElementById('cache-info'),
+    search: document.getElementById('search'),
+    minSpread: document.getElementById('min-spread'),
+    refresh: document.getElementById('refresh-btn'),
+  };
+
+  let LAST = null;
+
+  function fmtPct(x) {
+    if (x === null || x === undefined || isNaN(x)) return '—';
+    const v = x * 100;
+    const sign = v > 0 ? '+' : '';
+    return sign + v.toFixed(4) + '%';
+  }
+  function fmtApr(x) {
+    if (x === null || x === undefined || isNaN(x)) return '—';
+    return x.toFixed(2) + '%';
+  }
+  function classRate(r) {
+    if (r > 0) return 'row-pos';
+    if (r < 0) return 'row-neg';
+    return 'text-slate-300';
+  }
+  function fmtTime(ms) {
+    const d = new Date(ms);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function render() {
+    if (!LAST) return;
+    const q = els.search.value.trim().toUpperCase();
+    const minSpread = (parseFloat(els.minSpread.value) || 0) / 100;
+
+    let rows = LAST.rows;
+    if (q) rows = rows.filter(r => r.symbol.includes(q));
+    if (minSpread > 0) rows = rows.filter(r => r.spread_abs_8h >= minSpread);
+
+    els.tbody.innerHTML = '';
+    if (rows.length === 0) {
+      els.tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-12 text-center text-slate-500">No pairs match these filters.</td></tr>';
+    } else {
+      rows.slice(0, 200).forEach((r, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-3 py-2.5 text-slate-500 font-mono">${i + 1}</td>
+          <td class="px-3 py-2.5 font-semibold">${r.symbol}<span class="text-slate-500 text-xs ml-1">USDT</span></td>
+          <td class="px-3 py-2.5 text-right font-mono ${classRate(r.binance_rate_8h)}">${fmtPct(r.binance_rate_8h)}</td>
+          <td class="px-3 py-2.5 text-right font-mono ${classRate(r.bybit_rate_8h)}">${fmtPct(r.bybit_rate_8h)}</td>
+          <td class="px-3 py-2.5 text-right font-mono font-semibold ${classRate(r.spread_8h)}">${fmtPct(r.spread_8h)}</td>
+          <td class="px-3 py-2.5 text-right font-mono text-accent-400">${fmtApr(r.apr_pct)}</td>
+          <td class="px-3 py-2.5 text-xs">
+            <span class="px-1.5 py-0.5 rounded bg-good/10 text-good">LONG ${r.long_exchange}</span>
+            <span class="text-slate-500 mx-1">/</span>
+            <span class="px-1.5 py-0.5 rounded bg-bad/10 text-bad">SHORT ${r.short_exchange}</span>
+          </td>`;
+        els.tbody.appendChild(tr);
+      });
+    }
+    els.rowCount.textContent = `Showing ${Math.min(rows.length, 200)} of ${LAST.total_pairs} pairs`;
+    els.cacheInfo.textContent = LAST.cached
+      ? `cached · ${LAST.cache_age_seconds}s old`
+      : `live · ${fmtTime(LAST.timestamp)}`;
+  }
+
+  async function load() {
+    els.status.textContent = 'Fetching…';
+    try {
+      const r = await fetch('/api/scan');
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      LAST = data;
+      els.status.textContent = data.errors && data.errors.length ? 'Partial (' + data.errors.length + ' err)' : 'Live';
+      els.pairs.textContent = `${data.total_pairs} (B:${data.binance_pairs} / Y:${data.bybit_pairs})`;
+      const top = data.rows[0];
+      els.top.textContent = top ? `${top.symbol} · ${fmtPct(top.spread_abs_8h)}` : '—';
+      els.time.textContent = fmtTime(data.timestamp);
+      render();
+    } catch (e) {
+      els.status.textContent = 'Error';
+      els.tbody.innerHTML = `<tr><td colspan="7" class="px-3 py-12 text-center text-bad">Failed to load: ${e.message}</td></tr>`;
+    }
+  }
+
+  els.search.addEventListener('input', render);
+  els.minSpread.addEventListener('input', render);
+  els.refresh.addEventListener('click', load);
+
+  load();
+  setInterval(load, 30000);
+</script>
+</body>
+</html>

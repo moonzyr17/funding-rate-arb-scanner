@@ -2,14 +2,14 @@
 
 > Real-time perpetual futures funding rate arbitrage scanner across **Binance** and **Bybit**. Spot delta-neutral opportunities ranked by 8h-normalized spread and annualized APR.
 
-[![Live Demo](https://img.shields.io/badge/Live-Demo-22c55e?style=flat-square)](https://funding-rate-arb-scanner.up.railway.app)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-22c55e?style=flat-square)](https://web-production-862ee.up.railway.app)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=flat-square&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 ## Demo
 
-🔗 **[https://funding-rate-arb-scanner.up.railway.app](https://funding-rate-arb-scanner.up.railway.app)**
+🔗 **[https://web-production-862ee.up.railway.app](https://web-production-862ee.up.railway.app)**
 
 ![Funding Rate Arb Scanner](https://img.shields.io/badge/Pairs%20Scanned-500%2B-7dd3fc?style=for-the-badge)
 
@@ -28,6 +28,7 @@ This scanner:
 
 - 🔄 **Auto-refresh** every 30s with 30s in-memory cache to respect rate limits
 - 🔍 **Symbol search** + **min-spread filter** for quick triage
+- ↕️ **Click any column header to sort** — Symbol, Binance rate, Bybit rate, Spread, APR
 - 📊 Color-coded rates (green for positive, red for negative)
 - 📱 Mobile-friendly dark UI with sticky stats
 - 🧮 8h-normalized spread + per-side rates side by side

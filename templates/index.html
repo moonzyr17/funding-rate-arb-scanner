@@ -53,6 +53,10 @@
     100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
   }
   table tbody tr:hover { background: rgba(56,189,248,0.04); }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: #7dd3fc; }
+  th .arrow { display: inline-block; width: 0.7em; opacity: 0.4; margin-left: 2px; font-size: 0.7em; }
+  th.sort-active .arrow { opacity: 1; color: #7dd3fc; }
   .scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
   .scrollbar::-webkit-scrollbar-track { background: transparent; }
   .scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
@@ -136,11 +140,11 @@
         <thead class="bg-white/5 text-slate-300">
           <tr class="text-left">
             <th class="px-3 py-3 font-semibold">#</th>
-            <th class="px-3 py-3 font-semibold">Symbol</th>
-            <th class="px-3 py-3 font-semibold text-right">Binance (8h)</th>
-            <th class="px-3 py-3 font-semibold text-right">Bybit (8h)</th>
-            <th class="px-3 py-3 font-semibold text-right">Spread (8h)</th>
-            <th class="px-3 py-3 font-semibold text-right">Est. APR</th>
+            <th class="px-3 py-3 font-semibold sortable" data-sort="symbol">Symbol<span class="arrow">↕</span></th>
+            <th class="px-3 py-3 font-semibold text-right sortable" data-sort="binance_rate_8h">Binance (8h)<span class="arrow">↕</span></th>
+            <th class="px-3 py-3 font-semibold text-right sortable" data-sort="bybit_rate_8h">Bybit (8h)<span class="arrow">↕</span></th>
+            <th class="px-3 py-3 font-semibold text-right sortable sort-active" data-sort="spread_abs_8h">Spread (8h)<span class="arrow">↓</span></th>
+            <th class="px-3 py-3 font-semibold text-right sortable" data-sort="apr_pct">Est. APR<span class="arrow">↕</span></th>
             <th class="px-3 py-3 font-semibold">Strategy</th>
           </tr>
         </thead>
@@ -192,6 +196,7 @@
   };
 
   let LAST = null;
+  let SORT = { key: 'spread_abs_8h', dir: 'desc' };
 
   function fmtPct(x) {
     if (x === null || x === undefined || isNaN(x)) return '—';
@@ -218,9 +223,29 @@
     const q = els.search.value.trim().toUpperCase();
     const minSpread = (parseFloat(els.minSpread.value) || 0) / 100;
 
-    let rows = LAST.rows;
+    let rows = LAST.rows.slice();
     if (q) rows = rows.filter(r => r.symbol.includes(q));
     if (minSpread > 0) rows = rows.filter(r => r.spread_abs_8h >= minSpread);
+
+    const { key, dir } = SORT;
+    const mult = dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+      const va = a[key], vb = b[key];
+      if (typeof va === 'string') return mult * va.localeCompare(vb);
+      return mult * ((va ?? 0) - (vb ?? 0));
+    });
+
+    document.querySelectorAll('th.sortable').forEach(th => {
+      const k = th.dataset.sort;
+      const arrow = th.querySelector('.arrow');
+      if (k === key) {
+        th.classList.add('sort-active');
+        arrow.textContent = dir === 'asc' ? '↑' : '↓';
+      } else {
+        th.classList.remove('sort-active');
+        arrow.textContent = '↕';
+      }
+    });
 
     els.tbody.innerHTML = '';
     if (rows.length === 0) {
@@ -271,6 +296,19 @@
   els.search.addEventListener('input', render);
   els.minSpread.addEventListener('input', render);
   els.refresh.addEventListener('click', load);
+
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.sort;
+      if (SORT.key === k) {
+        SORT.dir = SORT.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        SORT.key = k;
+        SORT.dir = (k === 'symbol') ? 'asc' : 'desc';
+      }
+      render();
+    });
+  });
 
   load();
   setInterval(load, 30000);
